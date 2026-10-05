@@ -66,6 +66,18 @@ class Config:
             logger.warning(f"Día no reconocido en ALLOWED_DAYS: {day_clean}")
 
     @classmethod
+    def schedule_description(cls) -> str:
+        """Texto legible del horario configurado, p. ej. 'Martes y Jueves a las 21:00'."""
+        days = [SPANISH_DAY_NAMES[d] for d in sorted(cls.ALLOWED_DAY_NUMBERS)]
+        if not days:
+            days_text = "Todos los días"
+        elif len(days) == 1:
+            days_text = days[0]
+        else:
+            days_text = ", ".join(days[:-1]) + " y " + days[-1]
+        return f"{days_text} a las {cls.SYNC_HOUR:02d}:{cls.SYNC_MINUTE:02d}"
+
+    @classmethod
     def validate(cls):
         """Valida que la configuración esencial esté presente."""
         if not cls.TELEGRAM_BOT_TOKEN:

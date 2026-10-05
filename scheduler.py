@@ -28,7 +28,7 @@ async def scheduled_sync_job(bot):
     # Notificar al usuario por Telegram si se descargaron fotos o hubo errores
     if res["total"] > 0 and Config.AUTHORIZED_CHAT_IDS:
         notification_text = (
-            "🔔 **Sincronización Automática Programada (9:00 PM)**\n\n"
+            f"🔔 **Sincronización Automática Programada ({Config.SYNC_HOUR:02d}:{Config.SYNC_MINUTE:02d})**\n\n"
             f"• Fotografías encontradas hoy: {res['total']}\n"
             f"• Guardadas exitosamente: {res['downloaded']}\n"
             f"• Fallidas: {res['failed']}"

@@ -48,7 +48,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         "📸 **Bot Recolector de Apuntes del Tablero**\n\n"
         "Envía tus fotografías del tablero en cualquier momento durante las clases.\n"
-        "Serán guardadas y descargadas automáticamente en tu PC los martes y jueves después de las 9:00 PM.\n\n"
+        f"Serán guardadas y descargadas automáticamente en tu PC: {Config.schedule_description()}.\n\n"
         "Comandos disponibles:\n"
         "/status - Estado del bot y fotos pendientes\n"
         "/sync - Iniciar sincronización manual\n"
@@ -70,7 +70,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• **Usuario autorizado:** Sí (`{update.effective_chat.id}`)\n"
         f"• **Fotografías pendientes:** {pending_count}\n"
         f"• **Última sincronización:** {last_sync}\n\n"
-        f"• **Programación:** {Config.SYNC_HOUR:02d}:{Config.SYNC_MINUTE:02d} hs (Martes y Jueves)"
+        f"• **Programación:** {Config.schedule_description()}"
     )
     await update.message.reply_text(status_text, parse_mode="Markdown")
 
@@ -103,7 +103,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "📖 **Guía de Uso**\n\n"
         "1. **Enviar fotos:** Simplemente toma una foto del tablero y envíala a este chat (como foto o archivo de imagen).\n"
-        "2. **Procesamiento automático:** La PC descargará las fotos los Martes y Jueves después de las 21:00 hs.\n"
+        f"2. **Procesamiento automático:** La PC descargará las fotos: {Config.schedule_description()}.\n"
         "3. **Sincronización manual:** Usa el comando /sync si deseas descargar las fotos inmediatamente sin esperar al horario programado.\n"
         "4. **Consultar estado:** Usa /status para saber cuántas fotos faltan por descargar."
     )

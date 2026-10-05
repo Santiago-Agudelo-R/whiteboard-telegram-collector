@@ -1,6 +1,6 @@
 # Whiteboard Telegram Collector
 
-Automated asynchronous Python service for capturing whiteboard photos via a private Telegram bot, organizing them by session date, and compiling them into consolidated PDF lecture decks.
+Automated asynchronous Python service for capturing whiteboard photos via a private Telegram bot, organizing them by date, and compiling them into weekly PDF lecture decks.
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![python-telegram-bot](https://img.shields.io/badge/Telegram_Bot_API-v20%2B-blue.svg)](https://github.com/python-telegram-bot/python-telegram-bot)
@@ -15,7 +15,7 @@ Capturing classroom blackboard and whiteboard diagrams during lectures frequentl
 1. **Private Telegram Ingestion:** Accepts incoming photos strictly from authorized Telegram Chat IDs, rejecting unauthenticated traffic.
 2. **Metadata & State Tracking:** Tracks received photos in a local SQLite database with timestamps and upload status.
 3. **Scheduled Synchronization:** Automatically triggers downloads on designated lecture days/times using APScheduler.
-4. **Automated PDF Compilation:** Bundles chronological daily captures into a consolidated PDF study document per session using `Pillow` and `img2pdf`.
+4. **Automated PDF Compilation:** Groups downloaded captures by week (Monday to Sunday) and bundles them chronologically into one PDF per week using `Pillow` and `img2pdf`.
 
 ---
 
@@ -34,13 +34,13 @@ Capturing classroom blackboard and whiteboard diagrams during lectures frequentl
                                           [Date-Sorted Storage]
                                                      │
                                                      ▼
-                                          [pdf_generator.py] ──> Daily PDF Deck
+                                          [pdf_generator.py] ──> Weekly PDF Deck
 ```
 
 - **`bot.py`**: Telegram bot implementation using `python-telegram-bot` v20+ with authorization guards and photo download handlers.
 - **`database.py`**: SQLite data access layer for recording file IDs, capture timestamps, and download tracking.
 - **`downloader.py`**: Batch asset downloader that pulls pending media and places them into date-stamped directory structures.
-- **`pdf_generator.py`**: Image processing engine that sorts images chronologically, optimizes aspect ratios, and generates searchable PDF decks.
+- **`pdf_generator.py`**: Image processing engine that groups images by week, sorts them chronologically, converts non-JPEG/PNG formats to JPEG and generates one PDF deck per week.
 - **`scheduler.py`**: Background task scheduler configuring cron-like execution for specific class days and hours.
 
 ---
@@ -88,13 +88,25 @@ python main.py
 
 ### Run Immediate Manual Synchronization
 ```bash
-python main.py --sync-now
+python main.py --sync
 ```
 
-### Generate PDF for a Specific Date
+### Generate Weekly PDFs
 ```bash
-python main.py --generate-pdf "2026-10-05"
+python main.py --pdf
 ```
+
+### Bot Commands
+
+| Command | Description |
+| :--- | :--- |
+| `/start` | Welcome message and configured schedule |
+| `/status` | Pending photos, last sync time and schedule |
+| `/sync` | Download pending photos now |
+| `/pdf` | Generate the weekly PDFs and send the latest one to the chat |
+| `/help` | Usage instructions |
+
+Photos can be sent as regular photos, albums, or image files (JPG, PNG, WEBP...).
 
 ---
 
