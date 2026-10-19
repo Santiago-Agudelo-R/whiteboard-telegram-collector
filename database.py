@@ -6,14 +6,16 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 DB_PATH = Path(__file__).parent / "database.db"
 
+
 def get_connection():
-    """Retorna una conexión a la base de datos SQLite."""
+    """Return a SQLite database connection with Row factory enabled."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def init_db():
-    """Inicializa las tablas de la base de datos si no existen."""
+    """Initialize SQLite database tables if they do not exist."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -30,12 +32,13 @@ def init_db():
             );
         """)
         conn.commit()
-    logger.info("Base de datos SQLite inicializada correctamente.")
+    logger.info("SQLite database initialized.")
+
 
 def save_photo_metadata(message_id: int, chat_id: int, file_id: str, file_unique_id: str, message_date: datetime) -> bool:
     """
-    Guarda los metadatos de una fotografía recibida.
-    Devuelve True si se insertó, False si ya existía (evita duplicados).
+    Save metadata for a received photo.
+    Returns True if inserted, or False if the message_id already exists.
     """
     date_str = message_date.strftime("%Y-%m-%d %H:%M:%S")
     with get_connection() as conn:
@@ -46,16 +49,17 @@ def save_photo_metadata(message_id: int, chat_id: int, file_id: str, file_unique
                 VALUES (?, ?, ?, ?, ?, 'pending')
             """, (message_id, chat_id, file_id, file_unique_id, date_str))
             conn.commit()
-            logger.info(f"Fotografía registrada [message_id={message_id}, file_unique_id={file_unique_id}]")
+            logger.info(f"Photo registered [message_id={message_id}, file_unique_id={file_unique_id}]")
             return True
         except sqlite3.IntegrityError:
-            logger.info(f"Fotografía ya existente en BD, ignorando duplicado [message_id={message_id}]")
+            logger.info(f"Photo already exists in database, skipping duplicate [message_id={message_id}]")
             return False
+
 
 def get_pending_photos(date_filter: str = None):
     """
-    Obtiene las fotografías pendientes.
-    Si date_filter es proporcionado (formato YYYY-MM-DD), filtra solo las de ese día.
+    Retrieve pending photos ordered chronologically.
+    If date_filter is provided (YYYY-MM-DD), filters records for that date.
     """
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -73,8 +77,9 @@ def get_pending_photos(date_filter: str = None):
             """)
         return cursor.fetchall()
 
+
 def get_pending_count(date_filter: str = None) -> int:
-    """Devuelve la cantidad de fotografías pendientes."""
+    """Return the count of photos with status='pending'."""
     with get_connection() as conn:
         cursor = conn.cursor()
         if date_filter:
@@ -90,8 +95,9 @@ def get_pending_count(date_filter: str = None) -> int:
         row = cursor.fetchone()
         return row["count"] if row else 0
 
+
 def mark_as_downloaded(photo_id: int, local_path: str):
-    """Marca una fotografía como descargada y registra la ruta local."""
+    """Mark a photo record as downloaded and record its local file path."""
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -102,8 +108,9 @@ def mark_as_downloaded(photo_id: int, local_path: str):
         """, (now_str, str(local_path), photo_id))
         conn.commit()
 
+
 def mark_as_failed(photo_id: int):
-    """Marca una fotografía como fallida."""
+    """Mark a photo record as failed."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -113,8 +120,9 @@ def mark_as_failed(photo_id: int):
         """, (photo_id,))
         conn.commit()
 
+
 def get_last_sync_time() -> str:
-    """Retorna la fecha y hora de la última descarga exitosa."""
+    """Return the timestamp of the most recent successful download, or 'Never'."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -125,4 +133,4 @@ def get_last_sync_time() -> str:
         row = cursor.fetchone()
         if row and row["download_date"]:
             return row["download_date"]
-        return "Nunca"
+        return "Never"

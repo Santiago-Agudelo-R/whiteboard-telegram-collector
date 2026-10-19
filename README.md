@@ -117,6 +117,16 @@ Photos can be sent as regular photos, albums, or image files (JPG, PNG, WEBP...)
 
 ---
 
+## Testing
+
+Run the unit test suite with `pytest`:
+
+```bash
+pytest tests/ -v
+```
+
+---
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

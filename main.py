@@ -7,7 +7,6 @@ import downloader
 import bot
 import scheduler
 
-# Configurar logging en el formato solicitado
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] %(message)s',
@@ -15,8 +14,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 async def run_manual_sync():
-    """Ejecuta una sincronización manual inmediata desde la línea de comandos."""
+    """Run an immediate manual synchronization from the command line."""
     database.init_db()
     app = bot.create_application()
     async with app:
@@ -25,48 +25,49 @@ async def run_manual_sync():
         res = await downloader.sync_photos(app.bot)
         await app.stop()
         await app.shutdown()
-        logger.info(f"Sincronización manual finalizada: {res['downloaded']} guardadas.")
+        logger.info(f"Manual synchronization finished: {res['downloaded']} downloaded.")
+
 
 async def post_init_callback(application):
-    """Callback de inicialización del bot para arrancar el programador de tareas."""
+    """Application startup callback to initialize and start APScheduler."""
     sched = scheduler.setup_scheduler(application)
     sched.start()
     application.scheduler_instance = sched
-    logger.info("Bot de Telegram y Programador de Tareas activos.")
+    logger.info("Telegram Bot and background scheduler are active.")
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Bot Recolector de Fotos del Tablero")
-    parser.add_argument("--sync", action="store_true", help="Fuerza una sincronización manual inmediata de las fotos pendientes")
-    parser.add_argument("--pdf", action="store_true", help="Genera los documentos PDF semanales para las fotos descargadas")
+    parser = argparse.ArgumentParser(description="Whiteboard Telegram Photo Collector")
+    parser.add_argument("--sync", action="store_true", help="Force an immediate manual synchronization of pending photos")
+    parser.add_argument("--pdf", action="store_true", help="Generate weekly PDF decks from downloaded photos")
     args = parser.parse_args()
 
-    # Validar configuración antes de proceder
     Config.validate()
     database.init_db()
 
     if args.sync:
-        logger.info("Modo de sincronización manual solicitado vía CLI (--sync).")
+        logger.info("Manual synchronization requested via CLI (--sync).")
         asyncio.run(run_manual_sync())
         return
 
     if args.pdf:
-        logger.info("Generación de PDFs semanales solicitada vía CLI (--pdf).")
+        logger.info("Weekly PDF generation requested via CLI (--pdf).")
         import pdf_generator
         pdfs = pdf_generator.generate_weekly_pdfs()
-        logger.info(f"Se generaron {len(pdfs)} archivo(s) PDF semanal(es).")
+        logger.info(f"Generated {len(pdfs)} weekly PDF file(s).")
         return
 
-
-    logger.info("Iniciando aplicación en modo continuo...")
+    logger.info("Starting service in continuous polling mode...")
     app = bot.create_application()
     app.post_init = post_init_callback
 
     try:
         app.run_polling()
     except KeyboardInterrupt:
-        logger.info("Aplicación detenida por el usuario.")
+        logger.info("Service stopped by user.")
     except Exception as e:
-        logger.error(f"Error inesperado en la ejecución del bot: {e}")
+        logger.error(f"Unexpected error during bot execution: {e}")
+
 
 if __name__ == "__main__":
     main()

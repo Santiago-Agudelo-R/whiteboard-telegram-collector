@@ -14,113 +14,121 @@ import downloader
 
 logger = logging.getLogger(__name__)
 
+
 def is_authorized(chat_id: int) -> bool:
-    """Verifica si un chat_id está en la lista de usuarios autorizados."""
+    """Return True if chat_id is in the configured set of authorized users."""
     if not Config.AUTHORIZED_CHAT_IDS:
         return False
     return chat_id in Config.AUTHORIZED_CHAT_IDS
 
+
 async def check_authorization(update: Update) -> bool:
-    """Valida el acceso del usuario. Si no está autorizado, responde y devuelve False."""
+    """Validate user authorization. Replies with an error message and returns False if unauthorized."""
     chat_id = update.effective_chat.id
     if not is_authorized(chat_id):
-        logger.warning(f"Intento de acceso no autorizado desde chat_id: {chat_id}")
+        logger.warning(f"Unauthorized access attempt from chat_id: {chat_id}")
         if not Config.AUTHORIZED_CHAT_IDS:
             msg = (
-                f"⚠️ **Bot Privado**\n\n"
-                f"Aún no has configurado tu Chat ID autorizado.\n"
-                f"Tu Chat ID es: `{chat_id}`\n\n"
-                f"Por favor, agrégalo a tu archivo `.env` en `AUTHORIZED_CHAT_ID={chat_id}` y reinicia la aplicación."
+                f"**Private Bot**\n\n"
+                f"No authorized Chat ID is configured yet.\n"
+                f"Your Chat ID is: `{chat_id}`\n\n"
+                f"Add `AUTHORIZED_CHAT_ID={chat_id}` to your `.env` file and restart the service."
             )
         else:
-            msg = "⛔ Acceso denegado. Este es un bot privado."
-        
+            msg = "Access denied. This is a private bot."
+
         if update.message:
             await update.message.reply_text(msg, parse_mode="Markdown")
         return False
     return True
 
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Maneja el comando /start."""
+    """Handle the /start command."""
     if not await check_authorization(update):
         return
-    
+
     welcome_text = (
-        "📸 **Bot Recolector de Apuntes del Tablero**\n\n"
-        "Envía tus fotografías del tablero en cualquier momento durante las clases.\n"
-        f"Serán guardadas y descargadas automáticamente en tu PC: {Config.schedule_description()}.\n\n"
-        "Comandos disponibles:\n"
-        "/status - Estado del bot y fotos pendientes\n"
-        "/sync - Iniciar sincronización manual\n"
-        "/help - Ayuda e instrucciones"
+        "**Whiteboard Photo Collector**\n\n"
+        "Send whiteboard photos at any time during lectures.\n"
+        f"Photos are queued and synchronized automatically: {Config.schedule_description()}.\n\n"
+        "Available commands:\n"
+        "/status - Service status and pending photo count\n"
+        "/sync - Trigger an immediate manual synchronization\n"
+        "/pdf - Compile and send the latest weekly PDF\n"
+        "/help - Usage instructions"
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
+
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Maneja el comando /status."""
+    """Handle the /status command."""
     if not await check_authorization(update):
         return
-    
+
     pending_count = database.get_pending_count()
     last_sync = database.get_last_sync_time()
-    
+
     status_text = (
-        "🤖 **Estado del Sistema**\n\n"
-        f"• **Estado:** En línea y funcionando\n"
-        f"• **Usuario autorizado:** Sí (`{update.effective_chat.id}`)\n"
-        f"• **Fotografías pendientes:** {pending_count}\n"
-        f"• **Última sincronización:** {last_sync}\n\n"
-        f"• **Programación:** {Config.schedule_description()}"
+        "**System Status**\n\n"
+        f"- **Status:** Online\n"
+        f"- **Authorized Chat ID:** `{update.effective_chat.id}`\n"
+        f"- **Pending photos:** {pending_count}\n"
+        f"- **Last synchronization:** {last_sync}\n"
+        f"- **Schedule:** {Config.schedule_description()}"
     )
     await update.message.reply_text(status_text, parse_mode="Markdown")
 
+
 async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Maneja el comando /sync para forzar la sincronización."""
+    """Handle the /sync command to trigger an immediate download."""
     if not await check_authorization(update):
         return
-    
+
     pending_count = database.get_pending_count()
     if pending_count == 0:
-        await update.message.reply_text("ℹ️ No hay fotografías pendientes para sincronizar.")
+        await update.message.reply_text("No pending photos to synchronize.")
         return
-    
-    await update.message.reply_text(f"🔄 Iniciando sincronización manual de {pending_count} fotografía(s)...")
+
+    await update.message.reply_text(f"Starting manual synchronization of {pending_count} photo(s)...")
     res = await downloader.sync_photos(context.bot)
-    
+
     summary_text = (
-        "✅ **Sincronización completada**\n\n"
-        f"• Fotografías procesadas: {res['total']}\n"
-        f"• Guardadas con éxito: {res['downloaded']}\n"
-        f"• Fallidas: {res['failed']}"
+        "**Synchronization Completed**\n\n"
+        f"- Processed: {res['total']}\n"
+        f"- Downloaded: {res['downloaded']}\n"
+        f"- Failed: {res['failed']}"
     )
     await update.message.reply_text(summary_text, parse_mode="Markdown")
 
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Maneja el comando /help."""
+    """Handle the /help command."""
     if not await check_authorization(update):
         return
-    
+
     help_text = (
-        "📖 **Guía de Uso**\n\n"
-        "1. **Enviar fotos:** Simplemente toma una foto del tablero y envíala a este chat (como foto o archivo de imagen).\n"
-        f"2. **Procesamiento automático:** La PC descargará las fotos: {Config.schedule_description()}.\n"
-        "3. **Sincronización manual:** Usa el comando /sync si deseas descargar las fotos inmediatamente sin esperar al horario programado.\n"
-        "4. **Consultar estado:** Usa /status para saber cuántas fotos faltan por descargar."
+        "**Usage Guide**\n\n"
+        "1. **Send photos:** Send whiteboard photos to this chat as standard images or uncompressed document files.\n"
+        f"2. **Automated sync:** Scheduled downloads run on: {Config.schedule_description()}.\n"
+        "3. **Manual sync:** Run /sync to download pending photos immediately.\n"
+        "4. **Check status:** Run /status to inspect the pending queue."
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")
 
+
 async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Procesa fotografías enviadas al bot (individuales o en álbumes)."""
+    """Process incoming photos sent to the bot (single photos or media albums)."""
     if not await check_authorization(update):
         return
-    
+
     message = update.message
     if not message or not message.photo:
         return
-        
-    # Obtener la versión de mayor resolución de la foto
+
+    # Select the highest-resolution photo variant
     photo = message.photo[-1]
-    
+
     saved = database.save_photo_metadata(
         message_id=message.message_id,
         chat_id=message.chat_id,
@@ -128,36 +136,37 @@ async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file_unique_id=photo.file_unique_id,
         message_date=message.date
     )
-    
+
     pending = database.get_pending_count()
-    # Si la foto pertenece a un álbum (media_group_id), no enviamos spam de mensajes por cada foto
+    # Avoid replying to every item in a media album
     if saved and not message.media_group_id:
-        await message.reply_text(f"📸 Fotografía registrada (Pendientes para descarga: {pending})")
+        await message.reply_text(f"Photo queued (Pending downloads: {pending})")
     elif saved and message.media_group_id:
-        logger.info(f"Foto de álbum registrada (message_id={message.message_id}, pendientes={pending})")
+        logger.info(f"Album photo queued (message_id={message.message_id}, pending={pending})")
+
 
 async def document_photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Procesa imágenes enviadas como documentos/archivos (por mime_type o extensión)."""
+    """Process uncompressed images sent as document attachments."""
     if not await check_authorization(update):
         return
-    
+
     message = update.message
     if not message or not message.document:
         return
-        
+
     doc = message.document
     filename = (doc.file_name or "").lower()
     mime = (doc.mime_type or "").lower()
-    
+
     is_image = (
         mime.startswith("image/") or
         any(filename.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".heic", ".webp", ".bmp", ".tiff"])
     )
-    
+
     if not is_image:
-        await message.reply_text("⚠️ El archivo enviado no es una imagen reconocida.")
+        await message.reply_text("The uploaded document is not a supported image format.")
         return
-        
+
     saved = database.save_photo_metadata(
         message_id=message.message_id,
         chat_id=message.chat_id,
@@ -165,49 +174,49 @@ async def document_photo_handler(update: Update, context: ContextTypes.DEFAULT_T
         file_unique_id=doc.file_unique_id,
         message_date=message.date
     )
-    
+
     pending = database.get_pending_count()
     if saved and not message.media_group_id:
-        await message.reply_text(f"📄 Imagen (Documento) registrada (Pendientes para descarga: {pending})")
+        await message.reply_text(f"Image document queued (Pending downloads: {pending})")
 
 
 async def pdf_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Maneja el comando /pdf para generar y enviar los documentos PDF semanales."""
+    """Handle the /pdf command to compile and send weekly PDF decks."""
     if not await check_authorization(update):
         return
-    
-    await update.message.reply_text("📄 Generando documento PDF semanal de apuntes...")
+
+    await update.message.reply_text("Generating weekly lecture PDF...")
     import pdf_generator
     pdfs = pdf_generator.generate_weekly_pdfs()
-    
+
     if not pdfs:
-        await update.message.reply_text("⚠️ No se encontraron fotos descargadas para generar el PDF semanal.")
+        await update.message.reply_text("No downloaded photos found to compile a weekly PDF.")
         return
-    
-    await update.message.reply_text(f"✅ Se han generado {len(pdfs)} archivo(s) PDF semanal(es). Enviando el más reciente...")
+
+    await update.message.reply_text(f"Generated {len(pdfs)} weekly PDF file(s). Uploading the most recent deck...")
     latest_pdf = pdfs[-1]
-    
+
     with open(latest_pdf, "rb") as doc_file:
         await update.message.reply_document(
             document=doc_file,
             filename=latest_pdf.name,
-            caption=f"📚 **PDF Semanal de Apuntes:**\n`{latest_pdf.name}`",
+            caption=f"**Weekly Lecture Notes PDF:**\n`{latest_pdf.name}`",
             parse_mode="Markdown"
         )
 
+
 def create_application() -> Application:
-    """Crea y configura la aplicación de Telegram Bot."""
+    """Create and configure the Telegram Bot application instance."""
     Config.validate()
     app = ApplicationBuilder().token(Config.TELEGRAM_BOT_TOKEN).build()
-    
+
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("status", status_command))
     app.add_handler(CommandHandler("sync", sync_command))
     app.add_handler(CommandHandler("pdf", pdf_command))
     app.add_handler(CommandHandler("help", help_command))
-    
+
     app.add_handler(MessageHandler(filters.PHOTO, photo_handler))
     app.add_handler(MessageHandler(filters.Document.IMAGE, document_photo_handler))
-    
-    return app
 
+    return app

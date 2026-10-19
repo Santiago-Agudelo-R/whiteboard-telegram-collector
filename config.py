@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Cargar variables del archivo .env
+# Load environment variables from .env file
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -19,20 +19,24 @@ DAY_MAP = {
     "sunday": 6, "domingo": 6, "sun": 6, "dom": 6,
 }
 
-SPANISH_DAY_NAMES = {
-    0: "Lunes",
-    1: "Martes",
-    2: "Miércoles",
-    3: "Jueves",
-    4: "Viernes",
-    5: "Sábado",
-    6: "Domingo"
+DAY_NAMES = {
+    0: "Monday",
+    1: "Tuesday",
+    2: "Wednesday",
+    3: "Thursday",
+    4: "Friday",
+    5: "Saturday",
+    6: "Sunday"
 }
+
+# Kept for backward compatibility
+SPANISH_DAY_NAMES = DAY_NAMES
+
 
 class Config:
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-    
-    # Manejar lista de chat IDs autorizados (separados por coma)
+
+    # Parse comma-separated list of authorized Telegram chat IDs
     raw_chat_ids = os.getenv("AUTHORIZED_CHAT_ID", "").strip()
     AUTHORIZED_CHAT_IDS = set()
     if raw_chat_ids:
@@ -42,10 +46,10 @@ class Config:
                 try:
                     AUTHORIZED_CHAT_IDS.add(int(cid_clean))
                 except ValueError:
-                    logger.warning(f"Chat ID inválido en .env: {cid_clean}")
-    
-    DOWNLOAD_ROOT = Path(os.getenv("DOWNLOAD_ROOT", str(Path(__file__).parent / "Fotos_Tablero"))).resolve()
-    
+                    logger.warning(f"Invalid Chat ID in .env: {cid_clean}")
+
+    DOWNLOAD_ROOT = Path(os.getenv("DOWNLOAD_ROOT", str(Path(__file__).parent / "Whiteboard_Photos"))).resolve()
+
     try:
         SYNC_HOUR = int(os.getenv("SYNC_HOUR", "21").strip())
     except ValueError:
@@ -63,25 +67,24 @@ class Config:
         if day_clean in DAY_MAP:
             ALLOWED_DAY_NUMBERS.add(DAY_MAP[day_clean])
         elif day_clean:
-            logger.warning(f"Día no reconocido en ALLOWED_DAYS: {day_clean}")
+            logger.warning(f"Unrecognized day in ALLOWED_DAYS: {day_clean}")
 
     @classmethod
     def schedule_description(cls) -> str:
-        """Texto legible del horario configurado, p. ej. 'Martes y Jueves a las 21:00'."""
-        days = [SPANISH_DAY_NAMES[d] for d in sorted(cls.ALLOWED_DAY_NUMBERS)]
+        """Return a human-readable summary of the configured sync schedule."""
+        days = [DAY_NAMES[d] for d in sorted(cls.ALLOWED_DAY_NUMBERS)]
         if not days:
-            days_text = "Todos los días"
+            days_text = "Every day"
         elif len(days) == 1:
             days_text = days[0]
         else:
-            days_text = ", ".join(days[:-1]) + " y " + days[-1]
-        return f"{days_text} a las {cls.SYNC_HOUR:02d}:{cls.SYNC_MINUTE:02d}"
+            days_text = ", ".join(days[:-1]) + " and " + days[-1]
+        return f"{days_text} at {cls.SYNC_HOUR:02d}:{cls.SYNC_MINUTE:02d}"
 
     @classmethod
     def validate(cls):
-        """Valida que la configuración esencial esté presente."""
+        """Validate that required configuration settings are present."""
         if not cls.TELEGRAM_BOT_TOKEN:
-            raise ValueError("TELEGRAM_BOT_TOKEN no está definido en el archivo .env")
-        
-        # Crear directorio raíz de descargas si no existe
+            raise ValueError("TELEGRAM_BOT_TOKEN is not defined in the .env file")
+
         cls.DOWNLOAD_ROOT.mkdir(parents=True, exist_ok=True)
