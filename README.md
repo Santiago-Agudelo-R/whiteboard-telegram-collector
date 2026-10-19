@@ -119,9 +119,10 @@ Photos can be sent as regular photos, albums, or image files (JPG, PNG, WEBP...)
 
 ## Testing
 
-Run the unit test suite with `pytest`:
+Install development dependencies and run the unit test suite with `pytest`:
 
 ```bash
+pip install -r requirements-dev.txt
 pytest tests/ -v
 ```
 
